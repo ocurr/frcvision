@@ -235,9 +235,9 @@ func processRectangles(rects []cv.PointRect) (cv.PointRect, []cv.PointRect) {
 
 	for _, r := range rects {
 		points := r.Points[:]
-		for i := 0; i < 4; i++ {
-			dy := points[i].Y - points[(i+1)%4].Y
-			dx := points[i].X - points[(i+1)%4].X
+		for i := 0; i < len(points); i++ {
+			dy := points[i].Y - points[(i+1)%len(points)].Y
+			dx := points[i].X - points[(i+1)%len(points)].X
 			slope := 10000000.0
 			if dx != 0 {
 				slope = math.Abs(float64(dy) / float64(dx))
@@ -251,12 +251,12 @@ func processRectangles(rects []cv.PointRect) (cv.PointRect, []cv.PointRect) {
 		}
 
 		/*
-		if numHoriz >= 1 && numVert == 2 {
-			if r.Rect.Width > widest {
-				target = r
-				widest = r.Rect.Width
+			if numHoriz >= 1 && numVert == 2 {
+				if r.Rect.Width > widest {
+					target = r
+					widest = r.Rect.Width
+				}
 			}
-		}
 		*/
 		target = r
 
