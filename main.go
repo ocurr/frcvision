@@ -21,7 +21,7 @@ const (
 	hueWindowName = "Hue"
 
 	imagePath    = "images/"
-	inputPrefix  = imagePath + "imputs/Input_"
+	inputPrefix  = imagePath + "inputs/Input_"
 	outputPrefix = imagePath + "outputs/Out_"
 	targetPrefix = imagePath + "targets/Target_"
 )
@@ -43,8 +43,12 @@ func main() {
 	flag.BoolVar(&headless, "headless", false, "should we display output in windowed mode")
 	flag.Parse()
 
-	gontlet.InitClient("roborio-9973-frc.local:5800")
-	visionTable = gontlet.GetTable("vision")
+	if !captureFile {
+		gontlet.InitClient("roborio-9973-frc.local:5800")
+		visionTable = gontlet.GetTable("vision")
+	} else {
+		visionTable = nil
+	}
 
 	go run()
 	cv.Main()
@@ -112,7 +116,7 @@ func run() {
 
 				if !captureFile {
 					if found, ok := visionTable.GetAsBool("found"); ok && found && !saved {
-						stamp := time.Now().Format("03[04]05_01/02")
+						stamp := time.Now().Format("03_04_05_01_02")
 						cv.SaveImage(inputPrefix+stamp+".jpeg", img)
 						cv.SaveImage(outputPrefix+stamp+".jpeg", out)
 						cv.SaveImage(targetPrefix+stamp+".jpeg", rimg)
@@ -298,12 +302,14 @@ func processRectangles(rects []Polygon) (Polygon, []Polygon) {
 	//fmt.Println("XOff: ",xOffsetCenter)
 	//fmt.Println("YOff: ", yOffsetCenter)
 
-	if distance != math.Inf(0) {
-		visionTable.Update("found", "true")
-		visionTable.Update("xtheta", strconv.FormatFloat(xTheta, 'f', -1, 64))
-		visionTable.Update("dist", strconv.FormatFloat(distance, 'f', -1, 64))
-	} else {
-		visionTable.Update("found", "false")
+	if !captureFile {
+		if distance != math.Inf(0) {
+			visionTable.Update("found", "true")
+			visionTable.Update("xtheta", strconv.FormatFloat(xTheta, 'f', -1, 64))
+			visionTable.Update("dist", strconv.FormatFloat(distance, 'f', -1, 64))
+		} else {
+			visionTable.Update("found", "false")
+		}
 	}
 
 	for i := 0; i < len(rects); i++ {
