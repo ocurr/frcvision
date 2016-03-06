@@ -151,7 +151,12 @@ func run() {
 	os.Exit(0)
 }
 
-func processImage(input *cv.IplImage) (*cv.IplImage, []cv.PointRect) {
+type Polygon struct {
+	Points []cv.Point
+	Bounds cv.Rect
+}
+
+func processImage(input *cv.IplImage) (*cv.IplImage, []Polygon) {
 	storage := cv.NewMemStorage(0)
 	defer storage.Release()
 
@@ -197,7 +202,7 @@ func processImage(input *cv.IplImage) (*cv.IplImage, []cv.PointRect) {
 	//cv.Dilate(thresh,thresh,nil,2)
 	//cv.Erode(thresh,thresh,nil,2)
 
-	rects := make([]cv.PointRect, 0)
+	rects := make([]Polygon, 0)
 	threshClone := thresh.Clone()
 	defer threshClone.Release()
 	contour, _ := cv.FindContours(threshClone, storage, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE, cv.Point{})
@@ -210,8 +215,8 @@ func processImage(input *cv.IplImage) (*cv.IplImage, []cv.PointRect) {
 			continue
 		}
 
-		var r cv.PointRect
-		r.Rect = cv.BoundingRect(result)
+		var r Polygon
+		r.Bounds = cv.BoundingRect(result)
 		for i := 0; i < result.Len(); i++ {
 			r.Points = append(r.Points, result.PointAt(i))
 		}
@@ -221,14 +226,14 @@ func processImage(input *cv.IplImage) (*cv.IplImage, []cv.PointRect) {
 	return thresh, rects
 }
 
-func processRectangles(rects []cv.PointRect) (cv.PointRect, []cv.PointRect) {
+func processRectangles(rects []Polygon) (Polygon, []Polygon) {
 
 	numHoriz := 0
 	numVert := 0
 
 	//widest := 0
 
-	var target cv.PointRect
+	var target Polygon
 
 	NEARLY_HORIZONTAL_SLOPE := math.Tan((20 * math.Pi) / 180)
 	NEARLY_VERTICAL_SLOPE := math.Tan(((90 - 20) * math.Pi) / 180)
@@ -275,12 +280,12 @@ func processRectangles(rects []cv.PointRect) (cv.PointRect, []cv.PointRect) {
 	imageCenterX := 320.0 / 2.0
 	//imageCenterY := 240/2.0
 
-	centerX = float64(target.Rect.X + (target.Rect.Width / 2.0))
+	centerX = float64(target.Bounds.X + (target.Bounds.Width / 2.0))
 	//centerY = float64(target.R.Y + (target.R.Height/2.0))
 	xOffsetCenter := centerX - imageCenterX //pix
 	//yOffsetCenter := centerY - imageCenterY //pix
 
-	distance := (kTargetWidth * kFOV) / float64(target.Rect.Width)
+	distance := (kTargetWidth * kFOV) / float64(target.Bounds.Width)
 
 	//kB := math.Sin((7.1*math.Pi)/180.0)*(169.0/57)
 	//yTheta := (math.Asin(kB*(yOffsetCenter/distance))*180)/math.Pi //degrees
@@ -302,7 +307,7 @@ func processRectangles(rects []cv.PointRect) (cv.PointRect, []cv.PointRect) {
 	}
 
 	for i := 0; i < len(rects); i++ {
-		if rects[i].Rect == target.Rect {
+		if rects[i].Bounds == target.Bounds {
 			rects = append(rects[:i], rects[i+1:]...)
 			break
 		}
@@ -311,7 +316,7 @@ func processRectangles(rects []cv.PointRect) (cv.PointRect, []cv.PointRect) {
 	return target, rects
 }
 
-func applyRectangles(img *cv.IplImage, target cv.PointRect, rects []cv.PointRect) *cv.IplImage {
+func applyRectangles(img *cv.IplImage, target Polygon, rects []Polygon) *cv.IplImage {
 	cpy := img.Clone()
 
 	for _, r := range rects {
