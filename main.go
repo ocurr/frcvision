@@ -33,6 +33,8 @@ var (
 	captureFile  bool
 	headless     bool
 	visionTable  *gontlet.Table
+
+	lastTarget Polygon
 )
 
 func main() {
@@ -49,6 +51,8 @@ func main() {
 	} else {
 		visionTable = nil
 	}
+
+	lastTarget = Polygon{make([]cv.Point, 0), cv.Rect{100000000, 100000000, 10000000, 10000000}}
 
 	go run()
 	cv.Main()
@@ -129,6 +133,9 @@ func run() {
 				// Wait for input
 				key := cv.WaitKey(10 * time.Millisecond)
 				if key == 'q' {
+					if captureFile {
+						fileCapture.Close()
+					}
 					if !headless {
 						os.Exit(0)
 					}
@@ -203,9 +210,6 @@ func processImage(input *cv.IplImage) (*cv.IplImage, []Polygon) {
 		cv.ShowImage(hueWindowName, threshHue)
 	*/
 
-	//cv.Dilate(thresh,thresh,nil,2)
-	//cv.Erode(thresh,thresh,nil,2)
-
 	rects := make([]Polygon, 0)
 	threshClone := thresh.Clone()
 	defer threshClone.Release()
@@ -214,7 +218,6 @@ func processImage(input *cv.IplImage) (*cv.IplImage, []Polygon) {
 		result := cv.ApproxPoly(contour, storage, cv.POLY_APPROX_DP, cv.ContourPerimeter(contour)*0.02, 0)
 		result = cv.ConvexHull(result, cv.CLOCKWISE, 4)
 
-		// result.Len() != 4
 		if cv.ContourArea(result, cv.WHOLE_SEQ, false) < 100 || cv.ContourArea(result, cv.WHOLE_SEQ, false) >= 70000 || !cv.CheckContourConvexity(result) {
 			continue
 		}
@@ -232,54 +235,49 @@ func processImage(input *cv.IplImage) (*cv.IplImage, []Polygon) {
 
 func processRectangles(rects []Polygon) (Polygon, []Polygon) {
 
-	numHoriz := 0
-	numVert := 0
+	closestRatio := Polygon{make([]cv.Point, 0), cv.Rect{10000000, 1, 1, 1}}
+	closestToOld := Polygon{make([]cv.Point, 0), cv.Rect{100000000, 100000000, 10000000, 10000000}}
 
-	//widest := 0
+	target := Polygon{make([]cv.Point, 0), cv.Rect{-1, -1, -1, -1}}
 
-	var target Polygon
-
-	NEARLY_HORIZONTAL_SLOPE := math.Tan((20 * math.Pi) / 180)
-	NEARLY_VERTICAL_SLOPE := math.Tan(((90 - 20) * math.Pi) / 180)
+	goalRatio := 0.6
 
 	for _, r := range rects {
-		points := r.Points[:]
-		for i := 0; i < len(points); i++ {
-			dy := points[i].Y - points[(i+1)%len(points)].Y
-			dx := points[i].X - points[(i+1)%len(points)].X
-			slope := 10000000.0
-			if dx != 0 {
-				slope = math.Abs(float64(dy) / float64(dx))
-			}
-
-			if slope < NEARLY_HORIZONTAL_SLOPE {
-				numHoriz++
-			} else if slope > NEARLY_VERTICAL_SLOPE {
-				numVert++
-			}
+		/*
+			fmt.Println("Goal")
+			fmt.Println(float64(r.Bounds.Height) / float64(r.Bounds.Width))
+			fmt.Println("Closest")
+			fmt.Println(float64(closestRatio.Bounds.Height) / float64(closestRatio.Bounds.Width))
+		*/
+		if math.Abs(goalRatio-(float64(r.Bounds.Height)/float64(r.Bounds.Width))) < math.Abs(goalRatio-(float64(closestRatio.Bounds.Height)/float64(closestRatio.Bounds.Width))) {
+			closestRatio = r
 		}
 
-		/*
-			if numHoriz >= 1 && numVert == 2 {
-				if r.Rect.Width > widest {
-					target = r
-					widest = r.Rect.Width
-				}
-			}
-		*/
-		target = r
+		centerX := r.Bounds.X + r.Bounds.Width/2.0
+		centerY := r.Bounds.Y + r.Bounds.Height/2.0
+		lastCenterX := lastTarget.Bounds.X + lastTarget.Bounds.Width/2.0
+		lastCenterY := lastTarget.Bounds.Y + lastTarget.Bounds.Height/2.0
+		closestCenterX := closestToOld.Bounds.X + closestToOld.Bounds.Width/2.0
+		closestCenterY := closestToOld.Bounds.Y + closestToOld.Bounds.Height/2.0
 
-		//fmt.Println("Width: ", r.R.Width)
-		//fmt.Println("Height: ", r.R.Height)
+		if math.Abs(float64(lastCenterX-centerX)) < math.Abs(float64(lastCenterX-closestCenterX)) && math.Abs(float64(lastCenterY-centerY)) < math.Abs(float64(lastCenterY-closestCenterY)) {
+			closestToOld = r
+		}
+	}
 
+	if closestToOld.Bounds != closestRatio.Bounds {
+		target = closestRatio
+	} else {
+		target = closestToOld
 	}
 
 	var centerX float64
 	//var centerY float64
 
-	//kTargetHeight := 12.0 //inches
 	kTargetWidth := 20.0 //inches
 	kFOV := 399.0
+
+	//kTargetHeight := 12.0 //inches
 
 	imageCenterX := 320.0 / 2.0
 	//imageCenterY := 240/2.0
@@ -326,11 +324,20 @@ func applyRectangles(img *cv.IplImage, target Polygon, rects []Polygon) *cv.IplI
 	cpy := img.Clone()
 
 	for _, r := range rects {
-		points := r.Points[:]
+		points := make([]cv.Point, 0)
+		points = append(points, cv.Point{r.Bounds.X, r.Bounds.Y})
+		points = append(points, cv.Point{r.Bounds.X + r.Bounds.Width, r.Bounds.Y})
+		points = append(points, cv.Point{r.Bounds.X + r.Bounds.Width, r.Bounds.Y + r.Bounds.Height})
+		points = append(points, cv.Point{r.Bounds.X, r.Bounds.Y + r.Bounds.Height})
 		cv.PolyLine(cpy, [][]cv.Point{points}, true, cv.Scalar{255.0, 0.0, 0.0, 0.0}, 3, cv.AA, 0)
 	}
 
-	points := target.Points[:]
+	//points := target.Points[:]
+	points := make([]cv.Point, 0)
+	points = append(points, cv.Point{target.Bounds.X, target.Bounds.Y})
+	points = append(points, cv.Point{target.Bounds.X + target.Bounds.Width, target.Bounds.Y})
+	points = append(points, cv.Point{target.Bounds.X + target.Bounds.Width, target.Bounds.Y + target.Bounds.Height})
+	points = append(points, cv.Point{target.Bounds.X, target.Bounds.Y + target.Bounds.Height})
 	cv.PolyLine(cpy, [][]cv.Point{points}, true, cv.Scalar{0.0, 0.0, 255.0, 0.0}, 3, cv.AA, 0)
 
 	return cpy
