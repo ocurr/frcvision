@@ -89,14 +89,18 @@ func run() {
 			fileCapture = NewFileCapture(imagePath + "/inputs/*.jpeg")
 		}
 
-		advance := true
+		requestNext := true
+		requestPrev := false
 
 		for {
 
 			// Get a frame
-			if captureFile && advance {
+			if captureFile && requestNext {
 				img = fileCapture.QueryFrame()
-				advance = false
+				requestNext = false
+			} else if captureFile && requestPrev {
+				img = fileCapture.QueryLastFrame()
+				requestPrev = false
 			} else if !captureFile {
 				img, err = capture.QueryFrame()
 			}
@@ -146,8 +150,10 @@ func run() {
 						cv.SaveImage(outputPrefix+stamp+".jpeg", out)
 						cv.SaveImage(targetPrefix+stamp+".jpeg", rimg)
 					}
+				} else if key == 'd' {
+					requestNext = true
 				} else if key == 'a' {
-					advance = true
+					requestPrev = true
 				}
 				if !headless {
 					out.Release()
