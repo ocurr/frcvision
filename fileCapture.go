@@ -46,6 +46,8 @@ func (fc *FileCapture) QueryFrame() *cv.IplImage {
 
 	if fc.currentPath >= len(fc.frameBuff) {
 		fc.currentPath = 0
+	} else if fc.currentPath < 0 {
+		fc.currentPath = len(fc.frameBuff) - 1
 	}
 
 	if fc.lastImage != nil {
@@ -54,6 +56,23 @@ func (fc *FileCapture) QueryFrame() *cv.IplImage {
 	}
 	fc.lastImage = fc.frameBuff[fc.currentPath].Clone()
 	fc.currentPath += 1
+
+	return fc.lastImage
+}
+
+func (fc *FileCapture) QueryLastFrame() *cv.IplImage {
+	if fc.currentPath >= len(fc.frameBuff) {
+		fc.currentPath = 0
+	} else if fc.currentPath < 0 {
+		fc.currentPath = len(fc.frameBuff) - 1
+	}
+
+	if fc.lastImage != nil {
+		fc.lastImage.Release()
+		fc.lastImage = nil
+	}
+	fc.lastImage = fc.frameBuff[fc.currentPath].Clone()
+	fc.currentPath -= 1
 
 	return fc.lastImage
 }
