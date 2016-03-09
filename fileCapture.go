@@ -3,27 +3,27 @@ package main
 import (
 	"bitbucket.org/zombiezen/gocv/cv"
 	"fmt"
-	"path/filepath"
 	"os"
+	"path/filepath"
 )
 
 type FileCapture struct {
 	lastImage *cv.IplImage
 
-	paths []string
+	paths       []string
 	currentPath int
-	frameBuff []*cv.IplImage
+	frameBuff   []*cv.IplImage
 }
 
-func NewFileCapture(pattern string) (*FileCapture) {
+func NewFileCapture(pattern string) *FileCapture {
 	allPaths, err := filepath.Glob(pattern)
 	if err != nil {
-		fmt.Println("Failed to find files specified by pattern: ",pattern)
+		fmt.Println("Failed to find files specified by pattern: ", pattern)
 		os.Exit(1)
 	}
 	fCap := &FileCapture{
-		paths: allPaths,
-		frameBuff: make([]*cv.IplImage,0),
+		paths:       allPaths,
+		frameBuff:   make([]*cv.IplImage, 0),
 		currentPath: 0,
 	}
 
@@ -32,8 +32,8 @@ func NewFileCapture(pattern string) (*FileCapture) {
 }
 
 func (fc *FileCapture) readFiles() {
-	for i:=0; i<len(fc.paths); i++ {
-		img, err := cv.LoadImage(fc.paths[i],cv.LOAD_IMAGE_UNCHANGED)
+	for i := 0; i < len(fc.paths); i++ {
+		img, err := cv.LoadImage(fc.paths[i], cv.LOAD_IMAGE_UNCHANGED)
 		if err != nil {
 			fmt.Println("Failed to load file: ", fc.paths[i])
 			os.Exit(1)
@@ -44,15 +44,23 @@ func (fc *FileCapture) readFiles() {
 
 func (fc *FileCapture) QueryFrame() *cv.IplImage {
 
-	if len(fc.frameBuff) > fc.currentPath {
-		if fc.lastImage != nil {
-			fc.lastImage.Release()
-			fc.lastImage = nil
-		}
-		fc.lastImage = fc.frameBuff[fc.currentPath]
-		fc.currentPath += 1
+	if fc.currentPath >= len(fc.frameBuff) {
+		fc.currentPath = 0
 	}
+
+	if fc.lastImage != nil {
+		fc.lastImage.Release()
+		fc.lastImage = nil
+	}
+	fc.lastImage = fc.frameBuff[fc.currentPath].Clone()
+	fc.currentPath += 1
 
 	return fc.lastImage
 }
 
+func (fc *FileCapture) Close() {
+	for _, i := range fc.frameBuff {
+		i.Release()
+		i = nil
+	}
+}
