@@ -52,7 +52,7 @@ func main() {
 		visionTable = nil
 	}
 
-	lastTarget = Polygon{make([]cv.Point, 0), cv.Rect{100000000, 100000000, 10000000, 10000000}}
+	lastTarget = Polygon{make([]cv.Point, 0), cv.Rect{10000000, 1, 1, 1}}
 
 	go run()
 	cv.Main()
@@ -241,8 +241,9 @@ func processImage(input *cv.IplImage) (*cv.IplImage, []Polygon) {
 
 func processRectangles(rects []Polygon) (Polygon, []Polygon) {
 
-	closestRatio := Polygon{make([]cv.Point, 0), cv.Rect{10000000, 1, 1, 1}}
-	closestToOld := Polygon{make([]cv.Point, 0), cv.Rect{100000000, 100000000, 10000000, 10000000}}
+	comparable := Polygon{make([]cv.Point, 0), cv.Rect{10000000, 1, 1, 1}}
+	closestRatio := comparable
+	closestToOld := comparable
 
 	target := Polygon{make([]cv.Point, 0), cv.Rect{-1, -1, -1, -1}}
 
@@ -275,6 +276,10 @@ func processRectangles(rects []Polygon) (Polygon, []Polygon) {
 		target = closestRatio
 	} else {
 		target = closestToOld
+	}
+
+	if target.Bounds == comparable.Bounds {
+		lastTarget = comparable
 	}
 
 	var centerX float64
@@ -322,6 +327,8 @@ func processRectangles(rects []Polygon) (Polygon, []Polygon) {
 			break
 		}
 	}
+
+	lastTarget = target
 
 	return target, rects
 }
