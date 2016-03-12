@@ -198,13 +198,13 @@ func processImage(input *cv.IplImage) (*cv.IplImage, []Polygon) {
 	cv.Split(hsv, nil, nil, val, nil)
 	cv.Split(hsv, hue, nil, nil, nil)
 
-	//50,255
+	//40,80
 	cv.Threshold(hue, threshHue, 40, 80, cv.THRESH_BINARY)
 
 	//156,255
 	cv.Threshold(sat, threshSat, 156, 255, cv.THRESH_BINARY)
 
-	//100,255
+	//183,255
 	cv.Threshold(val, threshVal, 183, 255, cv.THRESH_BINARY)
 
 	cv.And(threshHue, threshVal, thresh, nil)
@@ -230,6 +230,10 @@ func processImage(input *cv.IplImage) (*cv.IplImage, []Polygon) {
 
 		var r Polygon
 		r.Bounds = cv.BoundingRect(result)
+		area := r.Bounds.Height * r.Bounds.Width
+		if area < 500 || area > 9000 {
+			continue
+		}
 		for i := 0; i < result.Len(); i++ {
 			r.Points = append(r.Points, result.PointAt(i))
 		}
