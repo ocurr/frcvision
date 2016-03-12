@@ -2,12 +2,13 @@ package main
 
 import (
 	"bitbucket.org/zombiezen/gocv/cv"
+	"errors"
+	"fmt"
 	"image/jpeg"
 	"io"
 	"log"
 	"mime/multipart"
 	"net/http"
-	"errors"
 )
 
 type AxisCamera struct {
@@ -24,6 +25,7 @@ func NewAxisCamera(host string, username, password string) (*AxisCamera, error) 
 	const path = "/mjpg/video.mjpg"
 	req, err := http.NewRequest("GET", "http://"+host+path, nil)
 	if err != nil {
+		fmt.Println("Request Failed")
 		return nil, err
 	}
 	if username != "" || password != "" {
@@ -33,6 +35,7 @@ func NewAxisCamera(host string, username, password string) (*AxisCamera, error) 
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		fmt.Println("Response Failed")
 		return nil, err
 	}
 
