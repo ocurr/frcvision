@@ -86,7 +86,7 @@ func run() {
 				time.Sleep(4 * time.Second)
 			}
 		} else {
-			fileCapture = NewFileCapture(imagePath + "/inputs/*.jpeg")
+			fileCapture = NewFileCapture(imagePath + "inputs/*.jpeg")
 		}
 
 		requestNext := true

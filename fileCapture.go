@@ -28,6 +28,16 @@ func NewFileCapture(pattern string) *FileCapture {
 	}
 
 	fCap.readFiles()
+	for len(fCap.frameBuff) == 0 {
+		fmt.Println("no files found...")
+		fmt.Println("Trying variation: .jpg")
+		fCap.paths, err = filepath.Glob(pattern[:len(pattern)-5] + ".jpg")
+		fCap.readFiles()
+		if len(fCap.frameBuff) == 0 {
+			fmt.Println("attempt failed, exiting...")
+			os.Exit(0)
+		}
+	}
 	return fCap
 }
 
