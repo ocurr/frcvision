@@ -46,7 +46,7 @@ func main() {
 	flag.Parse()
 
 	if !captureFile {
-		gontlet.InitClient("roborio-9973-frc.local:5800")
+		gontlet.InitClient("roborio-973-frc.local:5800")
 		visionTable = gontlet.GetTable("vision")
 	} else {
 		visionTable = nil
@@ -199,13 +199,13 @@ func processImage(input *cv.IplImage) (*cv.IplImage, []Polygon) {
 	cv.Split(hsv, hue, nil, nil, nil)
 
 	//50,255
-	cv.Threshold(hue, threshHue, 50, 255, cv.THRESH_BINARY)
+	cv.Threshold(hue, threshHue, 40, 80, cv.THRESH_BINARY)
 
 	//156,255
 	cv.Threshold(sat, threshSat, 156, 255, cv.THRESH_BINARY)
 
-	//183,255
-	cv.Threshold(val, threshVal, 100, 255, cv.THRESH_BINARY)
+	//100,255
+	cv.Threshold(val, threshVal, 183, 255, cv.THRESH_BINARY)
 
 	cv.And(threshHue, threshVal, thresh, nil)
 	cv.And(thresh, threshSat, thresh, nil)
