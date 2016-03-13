@@ -16,29 +16,34 @@ type FileCapture struct {
 }
 
 func NewFileCapture(pattern string) *FileCapture {
-	allPaths, err := filepath.Glob(pattern)
-	if err != nil {
-		fmt.Println("Failed to find files specified by pattern: ", pattern)
-		os.Exit(1)
-	}
+
 	fCap := &FileCapture{
-		paths:       allPaths,
 		frameBuff:   make([]*cv.IplImage, 0),
 		currentPath: 0,
 	}
 
-	fCap.readFiles()
-	for len(fCap.frameBuff) == 0 {
-		fmt.Println("no files found...")
-		fmt.Println("Trying variation: .jpg")
-		fCap.paths, err = filepath.Glob(pattern[:len(pattern)-5] + ".jpg")
-		fCap.readFiles()
-		if len(fCap.frameBuff) == 0 {
-			fmt.Println("attempt failed, exiting...")
+	fileTypes := make(map[int]string, 0)
+	fileTypes[0] = ".jpg"
+	fileTypes[1] = ".jpeg"
+	fileTypes[2] = ".png"
+	for i := 0; i < len(fileTypes); i++ {
+		fmt.Println("Trying variation: " + fileTypes[i])
+		var err error
+		fCap.paths, err = filepath.Glob(pattern + fileTypes[i])
+		if err != nil {
+			fmt.Println("pattern failed. check leading slashes")
 			os.Exit(0)
 		}
+		fCap.readFiles()
+		if len(fCap.frameBuff) != 0 {
+			fmt.Println("pattern matched loading files")
+			return fCap
+		}
+		fmt.Println("no files found...")
 	}
-	return fCap
+
+	os.Exit(0)
+	return nil
 }
 
 func (fc *FileCapture) readFiles() {
