@@ -92,7 +92,7 @@ func (fc *FileCapture) QueryLastFrame() *cv.IplImage {
 	return fc.lastImage
 }
 
-func (fc *FileCapture) Close() {
+func (fc *FileCapture) Release() {
 	for _, i := range fc.frameBuff {
 		i.Release()
 		i = nil

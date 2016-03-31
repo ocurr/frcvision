@@ -111,7 +111,7 @@ func (cam *AxisCamera) QueryFrame() (*cv.IplImage, error) {
 	return cam.lastImage, nil
 }
 
-func (cam *AxisCamera) Close() error {
+func (cam *AxisCamera) Release() error {
 	// Wait for fetchFrames to finish
 	cam.quit <- struct{}{}
 	close(cam.quit)
