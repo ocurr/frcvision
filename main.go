@@ -32,20 +32,22 @@ var (
 	axisPassword string
 	captureFile  bool
 	headless     bool
+	debug        bool
 	visionTable  *gontlet.Table
 
 	lastTarget Polygon
 )
 
 func main() {
-	flag.StringVar(&axisHost, "axishost", "10.9.73.20", "Axis camera host")
+	flag.StringVar(&axisHost, "axishost", "axis-camera.local", "Axis camera host")
 	flag.StringVar(&axisUsername, "axisuser", "", "Axis camera username")
 	flag.StringVar(&axisPassword, "axispass", "", "Axis camera password")
 	flag.BoolVar(&captureFile, "file", false, "Should we capture from a file")
 	flag.BoolVar(&headless, "headless", false, "should we display output in windowed mode")
+	flag.BoolVar(&debug, "debug", false, "run without connecting to the robot")
 	flag.Parse()
 
-	if !captureFile {
+	if !captureFile && !debug {
 		gontlet.InitClient("roborio-973-frc.local:5800")
 		visionTable = gontlet.GetTable("vision")
 	} else {
@@ -72,6 +74,7 @@ func run() {
 
 	var err error
 	var capture *AxisCamera
+	var capture cv.Capture
 	var fileCapture *FileCapture
 	var img *cv.IplImage
 	saved := false
@@ -103,6 +106,9 @@ func run() {
 				requestPrev = false
 			} else if !captureFile {
 				img, err = capture.QueryFrame()
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "failed to query frame")
@@ -122,7 +128,7 @@ func run() {
 					cv.ShowImage(outputWindowName, out)
 				}
 
-				if !captureFile {
+				if !captureFile && !debug {
 					if found, ok := visionTable.GetAsBool("found"); ok && found && !saved {
 						stamp := time.Now().Format("03_04_05_01_02")
 						cv.SaveImage(inputPrefix+stamp+".jpeg", img)
@@ -138,7 +144,7 @@ func run() {
 				key := cv.WaitKey(10 * time.Millisecond)
 				if key == 'q' {
 					if captureFile {
-						fileCapture.Close()
+						fileCapture.Release()
 					}
 					if !headless {
 						os.Exit(0)
@@ -162,7 +168,7 @@ func run() {
 			}
 		}
 		if !captureFile {
-			capture.Close()
+			capture.Release()
 		}
 	}
 	os.Exit(0)
@@ -309,18 +315,20 @@ func processRectangles(rects []Polygon) (Polygon, []Polygon) {
 	kA := math.Sin((8.08*math.Pi)/180.0) * (190.0 / 55)
 	xTheta := (math.Asin(kA*(xOffsetCenter/distance)) * 180) / math.Pi //degrees
 
-	//fmt.Println("XTheta: ",xTheta)
+	//fmt.Println("XTheta: ", xTheta)
 	//fmt.Println("YTheta: ",yTheta)
 	//fmt.Println("Dist: ", distance)
 	//fmt.Println("XOff: ",xOffsetCenter)
 	//fmt.Println("YOff: ", yOffsetCenter)
 
-	if !captureFile {
-		if distance != math.Inf(0) {
+	if !captureFile && !debug {
+		if distance != math.Inf(0) && !math.IsNaN(distance) && !math.IsNaN(xTheta) && xTheta != math.Inf(0) {
+			//fmt.Println("Found: ", true)
 			visionTable.Update("found", "true")
 			visionTable.Update("xtheta", strconv.FormatFloat(xTheta, 'f', -1, 64))
 			visionTable.Update("dist", strconv.FormatFloat(distance, 'f', -1, 64))
 		} else {
+			//fmt.Println("Found: ", false)
 			visionTable.Update("found", "false")
 		}
 	}
